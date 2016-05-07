@@ -1,0 +1,74 @@
+\section{Generating a PWA Model}
+
+\myipara{Problem Statement.}
+Given a set of $N$ states, $D_N = {\x_0,\dots,\x_n}$, error bound
+$\epsilon$, find $M$ polytopes $P_{c}$, such that the below holds.
+
+\[\forall\x\in\D_N.\exists P_j \in P.P_j(\x)\land||\Map{i}(\x) - \simulate(\tau,\x)||\le\epsilon\]
+
+This can be stated as the below set of constraints.
+\[\displaystyle\bigwedge_{\x\in D_N} \left(
+        \displaystyle\bigvee_{j\in M} P_j(\x)
+        \land
+        \displaystyle\bigvee_{j\in M} P_j(\x)
+\implies ||\Map{j}(\x) - \simulate(\tau,\x)||\le\epsilon\right)\]
+
+In other words, we want to construct a PWA model $\hat{\scrS}$ which
+predicts the next state of the system $\scrS$ within an error bounds
+of $\epsilon$. Note that this only requires that for every $\x$, there
+should exist atleast one polytope which predicts the next state within
+the given error bounds. Hence, it is possible that other overlapping
+polytopes also contain $\x$ but their asociated maps do not provide a
+`good' prediction of the next state.
+Such a definition might be provide for richer models with the same
+number of polytopes, but it needs to be seen/proven.
+
+The above requirement can be strengthened by searching for the PWA
+model where if a polytope contains $\x$, then its associated map must
+provide a `good' prediction of the next state.
+
+\[\forall\x\in\D_N.\forall P_j \in P.P_j(\x) \implies ||\Map{i}(\x) - \simulate(\tau,\x)||\le\epsilon\]
+
+Re-writing the above without the quantifiers, we get the below.
+\[\displaystyle\bigwedge_{\x\in D_N} \left(
+        \displaystyle\bigvee_{j\in M} P_j(\x)
+        \land
+        \displaystyle\bigwedge_{j\in M} P_j(\x)
+\implies ||\Map{j}(\x) - \simulate(\tau,\x)||\le\epsilon\right)\]
+
+As a reminder, the constraint $P_j(\x)$ can be expanded as a set of
+linear constraints $C_j(\x) \le d_j$, where $C_j$ is a matrix of size
+$c\times|\x|$, and $d_j$ is a vector of length $c$, where $|\x|$
+represents the elements in the state vector or its dimensions.
+Similarily, $\Map{j}(\x)$ represents affine map $\Map{j}(\x) =
+A_j \x + b_j \pm \epsilon$, where the square matrix $A_j$ is of size
+$|\x|$ and the vectors $b_j$ and $\epsilon$ are of length $|\x|$. As
+the states $\x$ are pre-determined, $\simulate(\tau,\x)$ can be
+computed to be a constant and the overall modeling problem is
+reduced to set of affine constraints with disjunctions. Such a problem
+can be solved using an SMT solver to obtain $C_j, d_j$ specifying the
+$P_j$ and their associated $\Map{j}$, specified by $A_j, b_j$.
+
+\subsection{Discussion}
+It is not clear if we should also enforce the condition, that the
+entire state space (region of interest) is contained in the union of
+the polytopes $\displaystyle\bigcup_{j\in M} P_j \supseteq \ContStates$.
+Instead, for now, we only talk about modeling all the states in the
+data set.
+
+Another important aspect of the formulation is letting the polytopes
+overlap. This can be easily strenthened to uniqeness, so that every
+state $\x \in D_N$ is contained by a unique $P_j$. Hence, the
+resulting PWA model becomes deterministic. Although it potentially
+simplify the reachability problem, it will also weaken the power of
+the PWA model (more polytopes might be required to fit the same data
+set).
+
+As of now we have fixed the $\epsilon$ for the entire PWA model. This
+will change when we introduce refinement.
+
+\subsection{PWA Model as a Transition System}
+The PWA model $\hat{\scrS}$ is naturally a transition system, of the
+form $P_j(\x) \implies \x' := A_j \x + b_j \pm \epsilon$. Let
+$T(\x,\x')$ represent the transition relation such that $\x' =
+\Map{j}(\x)$.

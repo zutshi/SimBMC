@@ -1,0 +1,54 @@
+We assume that the continuous-time hybrid dynamical system under test
+can be numerically simulated using a given $\simulate$ function. SUch
+a function is a state based deterministic numerical simulator of the
+form $\x'=\simulate(t,\x)$, where a new state $\x'$ reachable after
+time $t$ from $\x$ can be computed numerically whithin `acceptable'
+precision. Given a time bounded LTL property $\phi$, we now present a
+best effort search to find a counter-example $\pi$ to $\phi$ which can
+be reproduced using the given $\simulate$.
+
+What and Why?
+\begin{itemize}
+    \item Verification/falsification approaches use model
+        based on symbolic dynamics. SECAM finds falsifications using
+        only simulations. Can we find an approach which is of
+        intermediate complexity by recovering some model of the system
+        from observed simulations? We can use local PWA modeling.
+\end{itemize}
+
+How?
+\begin{itemize}
+    \item Generate data: relations
+    \item Build local PWA models of the system by discretizing space
+          and time.
+    \item Use an SMT solver to check time bounded
+          properties (Bounded model checking).
+    \item Refine
+\end{itemize}
+
+What deficiencies are we addressing here of the current
+appraoches (SECAM, S-Taliro, others)?
+
+\subsection{Building a Model} We would like to build a model of the
+system that is amenable to falsification (or verification in the case
+of white-box systems). A naive solution would be to describe all the
+behaviors of the system using a PWA model, where each region on the
+state space is associated with a set of affine dynamics. Such a
+discretization of the continuous hybrid dynamical system is amenable
+to model checking and has been explored in the past in several
+works~\cite{}. The problem lies in the scalability. Depending upon the
+dynamics of the system, an intractable number of paritions might be
+necessary to get accurate enough PWA model. Moreover, identifying such
+paritions automatically is a hard problem~\cite{} (check nimit's paper
+for citations).
+
+\subsection{Finding a counterexample} Once we have the pwa model we
+use an SMT solver to check the property $\phi$ for bounded time.
+
+\subsection{Refinement} Once a counterexample for $\phi$ against the
+pwa model is found, it needs to be checked if the numerical simulator
+satisfies it. This is due to the discrepencies between the approximate
+PWA model and numerical simulator. A confirmed violation at this stage
+successfully terminates the search for the violation. Otherwise, a
+refinement of the PWA model is necessary.
+Refinement ideas?

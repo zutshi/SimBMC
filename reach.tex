@@ -1,0 +1,59 @@
+Approximating a continuous plant $\scrS$ by the transition
+system $\hat{\scrS}$ allows us to encode the reachability problem by a
+BMC formula. As we kept the map $\Map{}$ affine, we can use
+off-the-shelf SMT solvers like Z3~\cite{DeMoura+Bjorner/08/Z3} to
+check it. We now formally state the problem.
+
+\paragraph{Falsification of Time Bounded Safety Property.} Given a
+polytope representing unsafe of states, $X_f: A_f\vx \le \vb_f$, a
+discrete transition system $\hat{\scrS}$ defined by $\Map{}$, it's
+initial set of states (also a polytope) $X_0: A_0\vx \le \vb_0$, a
+finite number of steps $N$, does there exist a trajectory of the
+system from an initial state $\vx_0 \in X_0$ to an unsafe set such
+that $\vx_k \in X_f$, where $\vx_k = \Map{}^k(\vx)$ and $k \le N$.
+
+\subsection{Overall Problem.}
+Given the black box system's description as the forward simulator
+function $\simulate$, search for a violation of $\phi$,
+\begin{scriptsize}
+\begin{alignat*}{1}
+    &Rch^k(\hat{\scrS}, X_0, X_f)\\
+    &=\exists \x_0 \in X_0.\displaystyle\bigwedge_{i=0}^{k-1}T(\x_i, \x_{i+1}) \land \x_{k} \in X_f\\
+    &=\exists \x_0 \in X_0.
+    \displaystyle\bigwedge_{i=0}^{k-1}
+    \left(\displaystyle\bigvee_{j \in M}P_j(\x_i) \land
+        \displaystyle\bigwedge_{j \in M}P_j(\x_i) \implies \x_{i+1} =
+    \Map{j}(\x_i)\right) \land \x_{k} \in X_f\\
+\begin{split}
+    =\exists \x_0 \in X_0.\displaystyle\bigwedge_{i=0}^{k-1} \Bigg(\displaystyle\bigvee_{j \in M}C_j\x_i\le d_j \land \displaystyle\bigwedge_{j \in M}C_j\x_i\le d_j\\
+    \implies \x_{i+1} = A_j\x_i + b_j \pm \epsilon \Bigg) \land \x_{k} \in X_f
+\end{split}
+\end{alignat*}
+\end{scriptsize}
+The presence of terms $C_j\x_i$ and $A_j\x_i$ make the problem
+non-linear or multi-affine when both $C_j$ (similarily $A_j$) and
+$\x_i$ are simulatenously unknown. We take the route of splitting the
+modeling and reachability problem into two separate problems. In the
+first problem $\x_i$s are finite and known and in the second one,
+$C_j$ and $A_j$ are known. We still need to connect the two problems,
+which we do using a model improvement/refinement procedure.
+
+
+\subsection{Search for a violation.} Given a BMC formula over affine
+arithmetic, an SMT solver either returns a satisfying assignment for
+it or finds it unsatisfiable. The former case provide us with an
+abstract violation while the latter conveys us the absence of one in
+the sound abstraction. To find the corresponding concrete violation if
+it exists, a concretization step is used. If a violation is not found,
+we can not conclude the absence of one. Instead, we can enrich our
+data set by adding more states and re-starting. Can we do anything
+else?
+
+\subsection{Concretization} An abstract path can be concretized by
+using random simulations. Same as before, we use the initial abstract
+state $C_0$ in the returned abstract path and sample it to get
+$\scr{N}$ concrete states ($\scr{N}$ is the concretization budget).
+The states are then simulated for specified time horizon $T$ using the
+given simulation function $\simulate$. If a violation is triggered, we
+conclude a successful falsification and stop. If not, we refine the
+abstraction.

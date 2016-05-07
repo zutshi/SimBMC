@@ -1,0 +1,73 @@
+\section{The Piecewise Affine Model}
+
+We construct a Piecewise affine (PWA) model $\hat{\scrS}$ defined by
+$\Map{}$ to approximate the behaviors of a continuous hybrid dynamical
+system.  Such a PWA model is non-deterministic, discrete-time (with a
+given time step $\tau$) and captures the witnessed behavior of the
+given $\scrS$ with bounded error $\epsilon$.
+
+Although $\hat{\scrS}$ is approximate and models only the witnessed
+behavior, it can guide the serach for a violating trajectory
+(justify).
+
+The behavior of $\hat{\scrS}$ are defined using the map $\Map{}$. The
+PWA model partitions the state space $\ContStates$ of $\scrS$ into
+overlapping regions which are (templatized) polytopes $P_{c}$ with a
+fixed number of constraints $c$. For the rest of the presentation we
+assume a fixed $c$ and simply denote the polytopes as $P$.  For each
+poytope, the PWA model defines a map $\Map{i}: \ContStates \mapsto
+\ContStates$ which predicts the next state $\x'$ after time $\tau$
+given a current state $\x \in P_i$ using an affine relation $\x' = A\x + b
+\pm \epsilon$. The overall PWA model can then be defined as below.
+
+\begin{equation}
+    \Map{} = \left\{
+        \begin{array}{ll}
+            \Map{1} = A_1\vx + \vb_1 & \vx \in P_1\\
+            \ldots & \ldots\\
+            \Map{i} = A_i\vx + \vb_i & \vx \in P_i\\
+            \ldots & \ldots\\
+            \Map{n} = A_n\vx + \vb_n & \vx \in P_n
+        \end{array}
+    \right.
+\end{equation}
+
+As $P_i$ can be overlapping, $\Map{}$ will be non-deterministic. The
+union of all polytopes contains the state space of the system,
+$\ContStates \subset \displaystyle \bigcup_i P_i$. Hence, for each
+$\x\in\ContStates$, there exists atleast one polytope $P_i$ such that
+$\x\in P_i$.
+
+Given the current state of the system $\x$, the PWA model
+$\hat{\scrS}$ approximates its state after time $\tau$ such that
+
+%The discretization $\hat{\scrS}$ is qualified as $\hat{\scrS}_\epsilon$
+%if it is $\delta$-approximate, \ie, the below is true under a given
+%norm.
+\begin{equation}
+    \forall \vx \in \ContStates.
+        ||\Map{}(\vx) - \simulate(\vx, \tau)|| \le \epsilon
+\end{equation}
+
+The approximated discrete system $\hat{\scrS}$ evolves by the repeated
+application of the map $\Map{}$. Given a state $\vx$ of the
+system at time $t$, the state at time $t + k\tau$, $\vx_k$ is
+approximated by iterating $\Map{}$ over $\vx$, $k$ times.
+
+\begin{align}
+    \vx_k &= \Map{}(\vx_{k-1}) \nonumber\\
+          &= \Map{}^2(\vx_{k-2}) \nonumber\\
+          &= \ldots \nonumber\\
+          &= \Map{}^k(\vx)
+\end{align}
+
+\begin{definition}{Trace of PWA model ($\pi$)}. The $k$-length trace
+$\pi$ of $\hat{\scrS}$ is given as a ordered sequence of discrete
+states $\x_0, \x_1, \ldots, \x_k$, where $\x_{i+i} = \Map{i}(\x_i)$.
+\end{definition}
+
+\begin{definition}{Counter-example of $\phi$ in $\hat{\scrS}$}. The trace $\pi$ is a
+    counter-example to a given property $\phi$, if ...
+\end{definition}
+
+

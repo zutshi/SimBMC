@@ -1,0 +1,60 @@
+\todo{This section is not very clearly written}\\
+A refinement of the abstraction can be carried
+out by reducing the error in the PWA model. On the other hand, an
+enrichment of the model be carried out by adding more behaviors
+(states) in the data set.
+Several ideas exist (discuss)
+\begin{itemize}
+    \item Add more $(\x, \x')$ pairs to the data set belonging to
+        the traces obtained from $\simulate$ along the traces of
+        the PWA model returned as counter-examples by the BMC.
+    \item Decrease $\epsilon$ along relevant $(\x,\x')$. Such pairs
+        can identified along the polytopes on the abstract
+        counter-example. In an abstract path, either all polytopes can
+        be refined or selectively refined by comparing the divergence
+        between their predictions and observed numerical values from
+        the trace produced by $\simulate$.
+    \item Re-model to obtain a refined/enriched model.
+    \item lather, rinse, repeat
+\end{itemize}
+
+\myipara{Note}The error is captured by $\epsilon$ for each state $\x$.
+Hence, we can modify $\epsilon$ for each state individually. Or, we
+can modify it for each polytope.
+
+\myipara{Deleting states} $\x$ deemed useless for the property at
+hand can also be deleted. However, if done ad-hoc, this takes away all
+covergence guarentees in the presence of a robust violation in the
+system $\scrS$. Perhaps we can determine conditions under which it
+can be successfully applied.
+
+\myipara{Increasing $\epsilon$} We can also increase
+$\epsilon$ to apply certain parts of state space to be modeled more
+coarsely than the rest. As above, an ad-hoc application will result in
+loss of any convergence guarentees.
+
+While re-modeling, it can happen that there does not exist a model
+with the fixed number of polytopes $M$ and template $c$. In such a
+case, we choose to increment $M := M + 1$ till we cna find a model. At
+this point it is unclear how the number of constraints $c$ can be
+manipulated alongside (discuss).
+
+\section{Discussion}
+
+If possible, we would like the time step $\tau$ to be dynamic
+and dynamics based instead of fixing one for the entire system. This
+can potentially decrease the depth $k$ required during BMC.
+
+We would also like to work with the full set of LTL properties. How
+can we check liveness properties? Can we extend this to finding
+counter-examples for $\omega$ regular proerties?
+
+Also, it should be noted that the above can be easily extended to
+handle bounded and parameterized disturbances/inputs.
+
+Even when a path is feasible, we need to use our previously defined
+concretization step to verify if the found initial state leads to an
+error state. To recall, this is done by simply using the $\simulate$
+function and simulating $k$-times at and around the
+$\delta$-neighbourhood of the feasible region, where $k$ and $\delta$
+define the budget of the concretization step.
