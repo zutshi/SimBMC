@@ -1,3 +1,21 @@
+
+##################
+# References:
+
+# #### PySMT
+# http://pysmt.readthedocs.io/en/latest/api_ref.html
+# https://github.com/pysmt/pysmt/blob/2abfb4538fa93379f9b2671bce30f27967dedbcf/examples/infix_notation.py
+
+# #### Numpy: overload operators
+# http://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html#arithmetic-matrix-multiplication-and-comparison-operations
+# http://stackoverflow.com/questions/14619449/how-can-i-override-comparisons-between-numpys-ndarray-and-my-type
+
+# #### Matplotlib: plot polygons
+# http://stackoverflow.com/questions/12881848/draw-polygons-more-efficiently-with-matplotlib
+# http://stackoverflow.com/questions/26935701/ploting-filled-polygons-in-python
+# http://stackoverflow.com/questions/17576508/python-matplotlib-drawing-linear-inequality-functions
+##################
+
 from __future__ import print_function
 
 # std lib
@@ -117,9 +135,28 @@ class EpsAccurateModel(object):
         VPx = PS.Or([sub_model.sat(data.x)
                     for sub_model in self.modelsym])
         self.solver.add_assertion(VPx)
+        #prediction = self.exPx_implies_Mx(data)
+        prediction = self.exMx(data)
+        self.solver.add_assertion(prediction)
+        return
 
-        # If the data belongs to Pi, then Mi should give a 'good'
-        # prediction
+    def exPx_implies_Mx(self, data):
+        """ Generates constraint of the sort:
+            \exists Pj. Pj(x) => |Mj(x) - y| <= e
+            where
+            - y = sim(x),
+            - Pj is a polytope defined by: Cj, dj
+            - Mj is an affine map defined by: Aj, bj
+        Parameters
+        ----------
+        data : object of Data class
+
+        Returns
+        -------
+        PySMT Constraint:   AND   (Pj(x) => |Mj(x) - y| <= e)
+                          i=0...M
+
+        """
         gd_predict = [
                 PS.Implies(
                     sub_model.sat(data.x),
@@ -128,9 +165,30 @@ class EpsAccurateModel(object):
                         and_op(sub_model.predict(data.x) - data.y, data.e, PS.LE)))
                 for sub_model in self.modelsym
                 ]
-        Px_implies_Mx = PS.And(gd_predict)
-        self.solver.add_assertion(Px_implies_Mx)
-        return
+        return PS.And(gd_predict)
+
+    def exMx(self, data):
+        """ Generates constraint of the sort:
+            \exists Mj. |Mj(x) - y| <= e
+            where
+            - y = sim(x),
+            - Mj is an affine map defined by: Aj, bj
+        Parameters
+        ----------
+        data : object of Data class
+
+        Returns
+        -------
+        PySMT Constraint:   OR   (|Mi(x) - y| <= e)
+                          i=0...M
+
+        """
+        gd_predict = [PS.And(
+                        and_op(sub_model.predict(data.x) - data.y, -data.e, PS.GE),
+                        and_op(sub_model.predict(data.x) - data.y, data.e, PS.LE))
+                      for sub_model in self.modelsym
+                      ]
+        return PS.Or(gd_predict)
 
     def create_sym_model(self):
         def f(s): return PS.Symbol(s, PT.REAL)
@@ -299,7 +357,7 @@ def test(tid):
     # num of constraints for each polytope
     ncons = 4
     # num. of partitions(polytopes)
-    nparts = 1
+    nparts = 10
     # This is required to get the types correct for later where
     # pre-fix notation has to be used
     e = np.array([PS.Real(1e+0)]*ndim)
