@@ -368,10 +368,14 @@ def test(tid):
     # generate data
     a, b = -2, 2
     X = (b - a) * np.random.random((N, ndim)) + a
+    # round of the digits to make things simpler for the SMT solver
+    decimals = 1
+    X = np.around(X, decimals=decimals)
     sim = test_case[tid]
     for x in X:
-        em.add_data(Data(x, sim(x), e))
-        print(x, sim(x))
+        Y = np.around(sim(x), decimals=1)
+        em.add_data(Data(x, Y, e))
+        print(x, Y)
     em.create_sym_model()
     em.search_model()
     em.populate_numerical_model()
@@ -380,10 +384,11 @@ def test(tid):
 
 
 if __name__ == '__main__':
-    assert(len(sys.argv[1]) == 1)
+    assert(len(sys.argv) == 3)
     import matplotlib.pyplot as plt
     #from sympy.solvers import solve
     #from sympy import Symbol
     import sympy as sm
+    np.random.seed(int(sys.argv[2]))
     m = test(int(sys.argv[1]))
     #visualize(sm, plt, m)
