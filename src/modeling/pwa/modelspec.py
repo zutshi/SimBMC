@@ -111,8 +111,8 @@ class PartitionedDiscreteAffineModel(SubModelSpec):
             self.sat_fn = sat_fn
         return
 
-    def sat(self, x):
-        return self.sat_fn(self.p, x)
+    def sat(self, x, *args):
+        return self.sat_fn(self.p, x, *args)
 
     def predict(self, x):
         m = self.m
@@ -123,7 +123,7 @@ class PartitionedDiscreteAffineModel(SubModelSpec):
         return s
 
     def __str__(self):
-        s = 'SubModel ->(\n{},\n{})'.format(self.p, self.m)
+        s = 'SubModel: {} ->(\n{},\n{})'.format(self.ID, self.p, self.m)
         return s
 
 
