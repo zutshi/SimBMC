@@ -20,6 +20,8 @@ from __future__ import print_function
 
 # std lib
 import sys
+import logging
+import time
 
 # external libs
 import numpy as np
@@ -32,6 +34,8 @@ import constraints as cons
 
 # project imports
 import pwa.pwa as pwa
+
+logger = logging.getLogger(__name__)
 
 # Enable infix notation
 PS.get_env().enable_infix_notation = True
@@ -104,13 +108,17 @@ class EpsAccurateModel(object):
     # check sat
     def search_model(self):
         print('searching for model...')
+        t0 = time.time()
         sat = self.solver.check_sat()
+        tf = time.time()
         if sat:
             print('success: Model found')
+            print('time taken:', tf-t0)
         else:
             print('failed')
+            print('time taken:', tf-t0)
             raise NotImplementedError('No Model found with the given parameters!')
-        return
+        return tf-t0
 
     def populate_numerical_model(self):
         get_value = np.vectorize(lambda x: float(self.solver.get_py_value(x)))
@@ -131,14 +139,38 @@ class EpsAccurateModel(object):
         return
 
     def add_data(self, data):
+
         # The data must belong to a partition
-        VPx = PS.Or([sub_model.sat(data.x)
-                    for sub_model in self.modelsym])
-        self.solver.add_assertion(VPx)
+        Px = self.atleast_1_partition_sats(data)
+        #Px = self.unique_partition_sats(data)
+
+        # Good prediction
         prediction = self.exPx_implies_Mx(data)
         #prediction = self.exMx(data)
+
+        # Add assertions
+        self.solver.add_assertion(Px)
         self.solver.add_assertion(prediction)
         return
+
+    def atleast_1_partition_sats(self, data):
+        # VPx
+        return PS.Or([sub_model.sat(data.x) for sub_model in self.modelsym])
+
+    def unique_partition_sats(self, data):
+        # (+)Px
+        sub_models = list(self.modelsym)
+        l1 = []
+        for i, _ in enumerate(sub_models):
+            l2 = []
+            for j, sbmdl in enumerate(sub_models):
+                cons = sbmdl.sat(data.x)
+                if i == j:
+                    l2.append(cons)
+                else:
+                    l2.append(PS.Not(cons))
+            l1.append(PS.And(l2))
+        return PS.Or(l1)
 
     def exPx_implies_Mx(self, data):
         """ Generates constraint of the sort:
@@ -569,14 +601,14 @@ def visualizev3(m, (X, Y), xrng, tol=1e-3):
         C, d, ID = sbmdl.p.C, sbmdl.p.d, sbmdl.p.ID
         # num dim must be 2
         assert(C.shape[1] == 2)
-        print('^'*50)
-        print('analyzing submodel: {}'.format(ID))
+        logger.debug('^'*50)
+        logger.debug('analyzing submodel: {}'.format(ID))
 
         lines = []
         for Ci, di in zip(C, d):
             # compute the equation of the line
             li = np.dot(Ci, xsym) <= di
-            print(li)
+            logger.debug('edge: {}'.format(li))
             # if the edge is trivially True, ignore it
             if li == boolalg.true:
                 continue
@@ -594,14 +626,31 @@ def visualizev3(m, (X, Y), xrng, tol=1e-3):
         # if the for loop did not break, plot the polygon
         else:
             P = []
-            print('plotting P{}'.format(ID))
+            logger.debug('plotting P{}'.format(ID))
             for l in lines:
-                #print('line:', l)
+                logger.debug('edge: {}'.format(l))
                 sol = sm.solve(l, x2sym)
-                #print(sol)
-                assert(sol.rel_op == '<=' or sol.rel_op == '>=')
-                f = sm.lambdify(x1sym, sol.rhs)
-                P.append((f, sol.rel_op == '<='))
+                logger.debug('sol: {}'.format(sol))
+                if(isinstance(sol, sm.boolalg.And)):
+                    exprs = sol.args
+                    # can not have more than 2 constraints in 2 dim
+                    # can have less?
+                    assert(len(exprs) == 2)
+                    f1 = sm.lambdify(x1sym, exprs[0].rhs)
+                    f2 = sm.lambdify(x1sym, exprs[1].rhs)
+                    assert(exprs[0].is_Relational)
+                    assert(exprs[1].is_Relational)
+                    if (exprs[0].lhs.is_finite and exprs[0].rhs.is_finite):
+                        P.append((f1, exprs[0].rel_op.find('<') == 0))
+                        print(exprs[0])
+                    if (exprs[1].lhs.is_finite and exprs[1].rhs.is_finite):
+                        P.append((f2, exprs[1].rel_op.find('<') == 0))
+                        print(exprs[1])
+                else:
+                    assert(sol.is_Relational)
+                    f = sm.lambdify(x1sym, sol.rhs)
+                    #P.append((f, sol.rel_op == '<='))
+                    P.append((f, sol.rel_op.find('<') == 0))
 
             plotter = Plotter([P], xlim=xrng, ylim=xrng)
 
@@ -659,9 +708,9 @@ def test(tid, rng):
     # num. dimension of the system
     ndim = 2
     # num of constraints for each polytope
-    ncons = 5
+    ncons = 3
     # num. of partitions(polytopes)
-    nparts = 5
+    nparts = 10
     # This is required to get the types correct for later where
     # pre-fix notation has to be used
     e = np.array([PS.Real(1e+0)]*ndim)
@@ -682,13 +731,18 @@ def test(tid, rng):
         em.add_data(Data(x, Y, e))
         print(x, Y)
     #em.create_sym_model()
-    em.search_model()
+    tt = em.search_model()
     em.populate_numerical_model()
     print(em.model)
+    print('time taken for model search:', tt)
     return em, (X, Y)
 
 
 if __name__ == '__main__':
+    FORMAT2 = '%(levelname) -10s %(asctime)s %(module)s:\
+               %(lineno)s %(funcName)s() %(message)s'
+    logging.basicConfig(filename='log.model', filemode='w', format=FORMAT2,
+                        level=logging.DEBUG)
     rng = (-10, 10)
     assert(len(sys.argv) == 3)
     np.random.seed(int(sys.argv[2]))
