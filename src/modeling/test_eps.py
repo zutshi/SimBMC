@@ -92,7 +92,7 @@ def test(tid, rng):
     return em, (X, Y)
 
 
-def test_vdp(N=1, nT=20):
+def test_vdp(e, N=1, nT=20):
     dec = 4
 
     def dyn(t, X):
@@ -106,21 +106,21 @@ def test_vdp(N=1, nT=20):
         solver.set_initial_value(X0, t=0.0)
         return solver.integrate(dt)
 
-    params = Params(nparts=3, ndim=2, ncons=1)
+    params = Params(nparts=6, ndim=2, ncons=4)
     em = EpsAccurateModel(params)
-    e = np.array([1e-1, 1e-1])
+    e = np.array([e, e])
 
     #x1rng = (-0.4, 0.4)
     #x2rng = (-0.4, 0.4)
     # just simplify because we know x{1,2} \in [-0.4, 0.4]
     xl, xh = -0.4, 0.4
-    x = np.around(xl + (xh-xl)*np.random.random((N, 2)), decimals=dec)
+    x = xl + (xh-xl)*np.random.random((N, 2))
     dt = 0.1
 
     X, Y = [], []
     for xi in x:
         for n in range(nT):
-            yi = np.around(sim(dt, xi), decimals=dec)
+            yi = sim(dt, xi)
             data = Data(xi, yi, e)
             em.add_data(data)
             X.append(xi)
@@ -242,17 +242,66 @@ def visualize_poly(m, (X, Y), xrng, tol=1e-3):
     for x in X:
         plt.plot(x[0], x[1], 'go', markersize=5, color='r')
 
-    plt.show()
+    #plt.show()
     return
 
 
+# draws lines in the state space, this is wrong. The lines reside in a
+# 4dim space. To plot them on the state space, the difference
+# equations need to be solved.
 def visualize_predictors(m, (X, Y)):
-    fig = plt.figure()
-    for sm in m:
-        A, b = sm.m.A, sm.m.b
-        print(A, b)
-    fig.plot()
+    rng = (-10, 10)
+    npoints = 100
+    x1sym, x2sym = sm.symbols('x1, x2')
+    xsym = np.array([x1sym, x2sym])
+    x1 = np.linspace(rng[0], rng[1], npoints)
+    #ax = plt.figure().gca()
+    #exprs = []
+    for sbmdl in m:
+        A, b = sbmdl.m.A, sbmdl.m.b
+        assert(A.shape == (2, 2))
+        assert(b.shape == (2,))
+        lines = np.dot(A, xsym) + b
+        for li in lines:
+            tmp = sm.solve(li, x2sym)
+            print(tmp)
+            assert(len(tmp) == 1)
+            x2symex = tmp[0]
+            fx1 = sm.lambdify(x1sym, x2symex)
+            #exprs.append(x2symex)
+            x2 = fx1(x1)
+            plt.plot(x1, x2, '-')
+    #p = sm.plotting.plot(*exprs, range=rng)
+    #ax.set_title('predictors')
+    #ax.plot()
+    # plot all the data points x
+    for x in X:
+        plt.plot(x[0], x[1], 'go', markersize=5, color='r')
+    plt.show()
 
+
+def plot_rect(r, edgecolor='k'):
+    import matplotlib.patches as patches
+    assert(len(r[0]) == 2)
+    c = r[0]
+    rng = r[1]
+    plt.gca().add_patch(
+        patches.Rectangle(c, *rng, fill=False, edgecolor=edgecolor)
+        #patches.Rectangle((0.1, 0.1), 0.5, 0.5, fill=False)
+    )
+
+
+def visualize_predictions(m, e, (X, Y)):
+    for x in X:
+        y = m.predict(x)
+        r = (y-e, (2*e, 2*e))
+        plot_rect(r)
+        plt.plot((x[0], y[0]), (x[1], y[1]), '-*k')
+        #plt.plot(y[0], y[1], 'go', markersize=5, color='b')
+
+    x = X[0]
+    plt.plot(x[0], x[1], 'go', markersize=5, color='g')
+    plt.show()
 
 if __name__ == '__main__':
     rng = (-10, 10)
@@ -265,14 +314,16 @@ if __name__ == '__main__':
     test_id = int(sys.argv[1])
     np.random.seed(seed)
 
+    e = 1e-4
     if test_id == 10:
-        em, data_set = test_vdp()
+        em, data_set = test_vdp(e)
     else:
         em, data_set = test(test_id, rng)
 
     print('='*40)
     visualize_poly(em.model, data_set, rng)
     #visualize_predictors(em.model, data_set)
+    visualize_predictions(em.model, e, data_set)
 
 
 # def visualize_():
